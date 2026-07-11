@@ -1,0 +1,20 @@
+# Node / React
+frontend/node_modules/
+frontend/build/
+frontend/dist/
+
+# Python / Django
+backend/__pycache__/
+backend/db.sqlite3
+backend/media/
+backend/staticfiles/
+backend/venv/
+backend/.env
+
+# General
+*.log
+*.pyc
+*.pyo
+*.pyd
+.DS_Store
+Thumbs.db
