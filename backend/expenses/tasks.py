@@ -1,16 +1,17 @@
 import re
 import logging
+from decimal import Decimal
 from celery import shared_task
 from django.conf import settings
 from django.apps import apps
 from PIL import Image
+import pytesseract  # noqa  # pyright: ignore[reportMissingImports]
 
 logger = logging.getLogger(__name__)
 
 @shared_task
 def process_receipt_ocr(expense_id):
-    import pytesseract  # Import inside the task to prevent setup errors if binary is not configured immediately
-    
+
     # Configure tesseract executable path if set
     tesseract_cmd = getattr(settings, 'TESSERACT_CMD', 'tesseract')
     pytesseract.pytesseract.tesseract_cmd = tesseract_cmd
@@ -42,7 +43,7 @@ def process_receipt_ocr(expense_id):
 
         # Optional simple heuristics to parse amount if amount is 0.00
         # Look for patterns like "Total: $12.34" or "TOTAL 12.34"
-        if expense.amount == 0:
+        if expense.amount == Decimal('0'):
             lines = text.split('\n')
             total_patterns = [
                 re.compile(r'total[\s\:\$]+(\d+[\.\,]\d{2})', re.IGNORECASE),
@@ -64,7 +65,7 @@ def process_receipt_ocr(expense_id):
                     break
             
             if found_amount:
-                expense.amount = found_amount
+                expense.amount = Decimal(str(found_amount))
                 logger.info(f"Auto-extracted amount {found_amount} for expense {expense_id}")
 
         expense.save()

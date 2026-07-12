@@ -1,7 +1,6 @@
 from django.db import models
 from django.conf import settings
 from django.db.models import Sum
-from expenses.models import Expense
 
 class Budget(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='budgets')
@@ -20,6 +19,8 @@ class Budget(models.Model):
         return f"{self.user.username} - {category_name} budget of {self.limit} ({self.start_date} to {self.end_date})"
 
     def get_total_spent(self):
+        # Import here to avoid circular import with expenses app
+        from expenses.models import Expense
         if self.category:
             total = Expense.objects.filter(
                 user=self.user,

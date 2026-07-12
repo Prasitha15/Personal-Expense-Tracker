@@ -1,12 +1,23 @@
-from rest_framework import viewsets, status
+from rest_framework import mixins, viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import Notification
 from .serializers import NotificationSerializer
 
-class NotificationViewSet(viewsets.ModelViewSet):
+class NotificationViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet
+):
+    """
+    Notifications are created only by the system (e.g. budget alerts via Celery tasks).
+    Users can list, read, and mark notifications as read/deleted, but cannot create them directly.
+    """
     queryset = Notification.objects.all()
     serializer_class = NotificationSerializer
+    http_method_names = ['get', 'patch', 'delete', 'head', 'options']
 
     def get_queryset(self):
         return self.queryset.filter(user=self.request.user)
