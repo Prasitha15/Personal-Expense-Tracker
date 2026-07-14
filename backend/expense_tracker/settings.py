@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'budgets',
     'analytics',
     'notifications',
+    'incomes',
 ]
 
 MIDDLEWARE = [

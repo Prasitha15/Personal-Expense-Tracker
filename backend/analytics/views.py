@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from expenses.models import Expense
 from budgets.models import Budget
+from incomes.models import Income
 
 
 class CategoryBreakdownView(APIView):
