@@ -4,6 +4,7 @@ from django.db.models import Sum
 
 class Budget(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='budgets')
+    group = models.ForeignKey('expense_groups.ExpenseGroup', on_delete=models.CASCADE, null=True, blank=True, related_name='budgets')
     category = models.ForeignKey('categories.Category', on_delete=models.CASCADE, null=True, blank=True, related_name='budgets')
     limit = models.DecimalField(max_digits=12, decimal_places=2)
     start_date = models.DateField()
@@ -21,17 +22,17 @@ class Budget(models.Model):
     def get_total_spent(self):
         # Import here to avoid circular import with expenses app
         from expenses.models import Expense
-        if self.category:
-            total = Expense.objects.filter(
-                user=self.user,
-                category=self.category,
-                date__gte=self.start_date,
-                date__lte=self.end_date
-            ).aggregate(total=Sum('amount'))['total']
+        qs = Expense.objects.filter(
+            date__gte=self.start_date,
+            date__lte=self.end_date
+        )
+        if self.group:
+            qs = qs.filter(group=self.group)
         else:
-            total = Expense.objects.filter(
-                user=self.user,
-                date__gte=self.start_date,
-                date__lte=self.end_date
-            ).aggregate(total=Sum('amount'))['total']
+            qs = qs.filter(user=self.user)
+            
+        if self.category:
+            qs = qs.filter(category=self.category)
+            
+        total = qs.aggregate(total=Sum('amount'))['total']
         return total or 0.00

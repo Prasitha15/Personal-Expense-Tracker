@@ -1,15 +1,16 @@
 /* CSS Variables & Design System */
 :root {
-  --bg-primary: #0b0f19;
-  --bg-secondary: #131a26;
-  --bg-tertiary: #1b2436;
-  --bg-accent: rgba(255, 255, 255, 0.03);
-  --border-color: rgba(255, 255, 255, 0.08);
+  /* Tailwind Light Theme (Slate) */
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f1f5f9;
+  --bg-accent: rgba(0, 0, 0, 0.05);
+  --border-color: #e2e8f0;
   --border-color-focus: rgba(99, 102, 241, 0.5);
   
-  --text-primary: #f3f4f6;
-  --text-secondary: #9ca3af;
-  --text-muted: #6b7280;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
   
   --color-primary: #6366f1;
   --color-primary-hover: #4f46e5;
@@ -20,16 +21,31 @@
   --color-warning-light: rgba(245, 158, 11, 0.15);
   --color-danger: #ef4444;
   --color-danger-light: rgba(239, 68, 68, 0.15);
+}
+
+[data-theme='dark'] {
+  /* Tailwind Dark Theme (Slate) */
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-tertiary: #334155;
+  --bg-accent: rgba(255, 255, 255, 0.05);
+  --border-color: #334155;
+  --border-color-focus: rgba(99, 102, 241, 0.5);
   
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+}
+
+:root {
   --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
   
-  --radius-sm: 8px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
-  
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
-  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
-  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.5);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
   
   --transition-fast: all 0.15s ease;
   --transition-normal: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -129,9 +145,7 @@ button, input, select, textarea {
   justify-content: center;
   min-height: 100vh;
   padding: 20px;
-  background: radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
-              radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.1) 0%, transparent 45%),
-              var(--bg-primary);
+  background: var(--bg-tertiary);
 }
 
 .auth-card {
@@ -141,8 +155,7 @@ button, input, select, textarea {
   padding: 2.5rem;
   width: 100%;
   max-width: 480px;
-  box-shadow: var(--shadow-lg);
-  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow-md);
 }
 
 .auth-header {
@@ -154,9 +167,7 @@ button, input, select, textarea {
   font-size: 1.8rem;
   font-weight: 800;
   margin-bottom: 0.5rem;
-  background: linear-gradient(135deg, #fff 30%, var(--text-muted) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text-primary);
 }
 
 .auth-header p {
@@ -192,9 +203,7 @@ button, input, select, textarea {
 }
 
 .sidebar-logo .logo-text {
-  background: linear-gradient(135deg, var(--color-primary) 0%, #a5b4fc 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text-primary);
 }
 
 .sidebar-menu {
@@ -540,8 +549,8 @@ button, input, select, textarea {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(8px);
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1052,3 +1061,48 @@ button, input, select, textarea {
   margin: 1.5rem 0;
 }
 
+/* ─── Export Dropdown ─────────────────────────────────────────────── */
+@keyframes exportDropdownIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.export-format-btn:hover:not(:disabled) {
+  background: var(--bg-tertiary) !important;
+}
+
+.export-format-btn:active:not(:disabled) {
+  background: var(--bg-accent) !important;
+}
+
+/* Inline spinner used inside export buttons */
+.export-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: exportSpin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes exportSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* ─── CSV Import Report ───────────────────────────────────────────── */
+.csv-report-row:hover {
+  background: var(--bg-tertiary) !important;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1);    opacity: 1;   }
+  50%       { transform: scale(1.1); opacity: 0.7; }
+}

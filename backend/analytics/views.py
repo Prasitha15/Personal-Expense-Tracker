@@ -207,3 +207,50 @@ class DashboardSummaryView(APIView):
             'top_categories': top_cats,
             'recent_expenses': recent_list,
         })
+
+
+class AIInsightsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        today = timezone.now().date()
+        month_start = today.replace(day=1)
+
+        # Gather context data
+        month_expenses = Expense.objects.filter(user=user, date__gte=month_start, date__lte=today)
+        total_expenses = float(month_expenses.aggregate(total=Sum('amount'))['total'] or 0)
+
+        active_budgets = Budget.objects.filter(user=user, start_date__lte=today, end_date__gte=today)
+        total_budget = float(active_budgets.aggregate(total=Sum('limit'))['total'] or 0)
+
+        remaining = total_budget - total_expenses
+        savings_rate = round((remaining / total_budget) * 100, 1) if total_budget > 0 else 0
+
+        top_categories = (
+            month_expenses
+            .values('category__name')
+            .annotate(total=Sum('amount'))
+            .order_by('-total')[:3]
+        )
+        top_cats_context = [{'name': tc['category__name'] or 'Uncategorized', 'percentage': round((float(tc['total']) / total_expenses) * 100, 1) if total_expenses > 0 else 0} for tc in top_categories]
+
+        context = {
+            'total_expenses': total_expenses,
+            'total_budget': total_budget,
+            'savings_rate': savings_rate,
+            'top_categories': top_cats_context,
+        }
+
+        # Get AI Provider and generate insights
+        from .ai_providers import get_ai_provider
+        provider = get_ai_provider()
+        try:
+            insights = provider.generate_insights(context)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"AI Insight generation failed: {e}")
+            insights = ["Unable to generate AI insights at the moment."]
+
+        return Response({'insights': insights})
+

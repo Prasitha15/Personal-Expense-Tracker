@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'analytics',
     'notifications',
     'incomes',
+    'expense_groups',
 ]
 
 MIDDLEWARE = [
@@ -171,4 +172,10 @@ TESSERACT_CMD = os.getenv('TESSERACT_CMD', 'tesseract')
 # Email configuration for Password Reset (Console backend simulates delivery)
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = 'no-reply@expensetracker.local'
+
+
+# AI Provider for Insights ('mock', 'gemini', 'openai')
+AI_PROVIDER = os.getenv('AI_PROVIDER', 'mock')
+
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')
 

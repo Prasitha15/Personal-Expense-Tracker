@@ -36,6 +36,7 @@ export default function Dashboard() {
   const [categoryData, setCategoryData] = useState([]);
   const [monthlyData, setMonthlyData] = useState([]);
   const [weeklyData, setWeeklyData] = useState([]);
+  const [insights, setInsights] = useState([]);
 
   const formatVal = (val) => {
     const symbol = user?.currency === 'EUR' ? '€' : user?.currency === 'GBP' ? '£' : user?.currency === 'INR' ? '₹' : '$';
@@ -45,16 +46,18 @@ export default function Dashboard() {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const [summaryRes, catRes, monthRes, weekRes] = await Promise.all([
+      const [summaryRes, catRes, monthRes, weekRes, insightsRes] = await Promise.all([
         api.get('/api/analytics/dashboard-summary/'),
         api.get('/api/analytics/category-breakdown/'),
         api.get('/api/analytics/monthly-trend/'),
         api.get('/api/analytics/weekly-trend/'),
+        api.get('/api/analytics/insights/').catch(() => ({ data: { insights: [] } })),
       ]);
       setSummary(summaryRes.data);
       setCategoryData(catRes.data);
       setMonthlyData(monthRes.data);
       setWeeklyData(weekRes.data);
+      setInsights(insightsRes.data.insights || []);
     } catch (err) {
       console.error('Dashboard data fetch failed', err);
     } finally {
@@ -99,6 +102,40 @@ export default function Dashboard() {
           Overview for <strong>{currentMonth}</strong> — track your spending, budgets, and savings at a glance.
         </p>
       </div>
+
+      {/* ===== AI INSIGHTS WIDGET ===== */}
+      {insights.length > 0 && (
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(16, 185, 129, 0.05))',
+          border: '1px solid var(--border-color)',
+          borderRadius: 'var(--radius-lg)',
+          padding: '1.25rem 1.5rem',
+          marginBottom: '1.5rem',
+          backdropFilter: 'blur(10px)',
+        }}>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '1.4rem' }}>✨</span> AI Spending Insights
+          </h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {insights.map((insight, idx) => (
+              <div key={idx} style={{ 
+                display: 'flex', 
+                alignItems: 'flex-start', 
+                gap: '10px',
+                background: 'var(--bg-secondary)',
+                padding: '0.75rem 1rem',
+                borderRadius: 'var(--radius-md)',
+                fontSize: '0.9rem',
+                color: 'var(--text-primary)',
+                boxShadow: 'var(--shadow-sm)'
+              }}>
+                <div style={{ color: 'var(--color-primary)', marginTop: '2px' }}>✦</div>
+                <div>{insight}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ===== SUMMARY CARDS ===== */}
       <div className="dashboard-summary-grid">

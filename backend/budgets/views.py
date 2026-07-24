@@ -12,12 +12,21 @@ class BudgetViewSet(viewsets.ModelViewSet):
     serializer_class = BudgetSerializer
 
     def get_queryset(self):
-        qs = self.queryset.filter(user=self.request.user)
+        from django.db.models import Q
+        qs = self.queryset.filter(
+            Q(user=self.request.user) | Q(group__members__user=self.request.user)
+        ).distinct()
+        
         # Optional: filter active budgets only
         status = self.request.query_params.get('status')
         if status == 'active':
             today = timezone.now().date()
             qs = qs.filter(start_date__lte=today, end_date__gte=today)
+            
+        group_id = self.request.query_params.get('group')
+        if group_id is not None:
+            qs = qs.filter(group_id=group_id)
+            
         return qs
 
     def perform_create(self, serializer):

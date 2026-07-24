@@ -14,6 +14,9 @@ class ExpenseFilter(django_filters.FilterSet):
     # Category filter (by id)
     category = django_filters.NumberFilter(field_name='category_id')
 
+    # Group filter (by id)
+    group = django_filters.NumberFilter(field_name='group_id')
+
     # Payment method exact-match
     payment_method = django_filters.ChoiceFilter(choices=Expense.PAYMENT_METHOD_CHOICES)
 

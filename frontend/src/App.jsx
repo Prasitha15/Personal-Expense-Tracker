@@ -4,6 +4,7 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 import { AuthProvider } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './routes/ProtectedRoutes';
 import { Layout } from './components/Layout';
 
@@ -11,6 +12,8 @@ import { Layout } from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Expenses from './pages/Expenses';
 import Budgets from './pages/Budgets';
+import Groups from './pages/Groups';
+import GroupJoin from './pages/GroupJoin';
 import Profile from './pages/Profile';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -20,9 +23,10 @@ import ResetPassword from './pages/ResetPassword';
 export default function App() {
   return (
     <Router>
-      <AuthProvider>
-        <Routes>
-          {/* Public routes */}
+      <ThemeProvider>
+        <AuthProvider>
+          <Routes>
+            {/* Public routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -50,6 +54,20 @@ export default function App() {
               </Layout>
             </ProtectedRoute>
           } />
+          <Route path="/groups" element={
+            <ProtectedRoute>
+              <Layout>
+                <Groups />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/groups/join" element={
+            <ProtectedRoute>
+              <Layout>
+                <GroupJoin />
+              </Layout>
+            </ProtectedRoute>
+          } />
           <Route path="/profile" element={
             <ProtectedRoute>
               <Layout>
@@ -66,9 +84,10 @@ export default function App() {
               <a href="/" style={{ color: 'var(--color-primary)', textDecoration: 'underline', marginTop: '1rem', display: 'inline-block' }}>Go back home</a>
             </div>
           } />
-        </Routes>
-        <ToastContainer position="top-right" autoClose={4000} theme="dark" />
-      </AuthProvider>
+          </Routes>
+          <ToastContainer position="top-right" autoClose={4000} theme="dark" />
+        </AuthProvider>
+      </ThemeProvider>
     </Router>
   );
 }

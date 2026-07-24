@@ -6,8 +6,12 @@ import { toast } from 'react-toastify';
 
 export default function Budgets() {
   const { user } = useAuth();
+  const queryParams = new URLSearchParams(window.location.search);
+  const groupId = queryParams.get('group_id') || '';
+
   const [budgets, setBudgets] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState(null);
@@ -16,7 +20,9 @@ export default function Budgets() {
 
   const fetchBudgets = async () => {
     try {
-      const res = await api.get('/api/budgets/');
+      const params = {};
+      if (groupId) params.group = groupId;
+      const res = await api.get('/api/budgets/', { params });
       setBudgets(res.data.results || res.data);
     } catch (err) {
       toast.error("Failed to load budgets");
@@ -32,9 +38,18 @@ export default function Budgets() {
     }
   };
 
+  const fetchGroups = async () => {
+    try {
+      const res = await api.get('/api/groups/');
+      setGroups(res.data.results || res.data);
+    } catch (err) {
+      console.error("Failed to load groups", err);
+    }
+  };
+
   const loadData = async () => {
     setLoading(true);
-    await Promise.all([fetchBudgets(), fetchCategories()]);
+    await Promise.all([fetchBudgets(), fetchCategories(), fetchGroups()]);
     setLoading(false);
   };
 
@@ -46,6 +61,7 @@ export default function Budgets() {
     setEditingBudget(null);
     reset({
       category: '',
+      group: '',
       limit: '',
       start_date: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
       end_date: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0],
@@ -57,6 +73,7 @@ export default function Budgets() {
     setEditingBudget(budget);
     reset({
       category: budget.category || '',
+      group: budget.group || '',
       limit: budget.limit,
       start_date: budget.start_date,
       end_date: budget.end_date,
@@ -68,6 +85,7 @@ export default function Budgets() {
     const payload = {
       ...data,
       category: data.category === "" ? null : parseInt(data.category, 10),
+      group: data.group === "" ? null : parseInt(data.group, 10),
       limit: parseFloat(data.limit),
     };
     try {
@@ -110,8 +128,12 @@ export default function Budgets() {
     <div>
       <div className="flex justify-between items-center m-b-6">
         <div>
-          <h1 style={{ fontSize: '1.8rem', fontWeight: 800 }}>Budget Control Center</h1>
-          <p style={{ color: 'var(--text-secondary)' }}>Establish category spending boundaries and analyze consumption in real-time.</p>
+          <h1 style={{ fontSize: '1.8rem', fontWeight: 800 }}>
+            {groupId ? 'Shared Budgets' : 'Spending Limits'}
+          </h1>
+          <p style={{ color: 'var(--text-secondary)' }}>
+            {groupId ? 'Manage spending thresholds for this group.' : 'Proactively manage your expenses by setting targeted thresholds.'}
+          </p>
         </div>
         <button className="btn btn-primary" onClick={openAddModal}>🎯 Set New Budget</button>
       </div>
@@ -182,6 +204,23 @@ export default function Budgets() {
                     overflow: 'hidden'
                   }}
                 >
+                  {b.group_name && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '10px',
+                      left: '10px',
+                      fontSize: '0.7rem',
+                      background: 'var(--color-warning-light)',
+                      color: 'var(--color-warning)',
+                      padding: '2px 8px',
+                      borderRadius: '12px',
+                      fontWeight: 700,
+                      textTransform: 'uppercase'
+                    }}>
+                      Group: {b.group_name}
+                    </div>
+                  )}
+
                   {isMonthly && (
                     <div style={{
                       position: 'absolute',
@@ -284,6 +323,18 @@ export default function Budgets() {
                 <small style={{ display: 'block', marginTop: '4px', color: 'var(--text-muted)' }}>
                   Select "Overall Monthly Budget" to apply this limit to your entire spending.
                 </small>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Group (Optional)</label>
+                <select className="form-control" {...register('group')}>
+                  <option value="">Personal (No Group)</option>
+                  {groups.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="form-group">

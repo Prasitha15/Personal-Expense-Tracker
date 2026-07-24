@@ -3,6 +3,8 @@ import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-toastify';
+import ExportDropdown from '../components/ExportDropdown';
+import CsvImportModal from '../components/CsvImportModal';
 
 /* ─── constants ─────────────────────────────────────────────────── */
 const PAGE_SIZE = 10;
@@ -79,14 +81,19 @@ export default function Expenses() {
   /* ─── list state ────────────────────────────────────────────── */
   const [expenses,       setExpenses]       = useState([]);
   const [categories,     setCategories]     = useState([]);
+  const [groups,         setGroups]         = useState([]);
   const [loading,        setLoading]        = useState(true);
   const [page,           setPage]           = useState(1);
   const [count,          setCount]          = useState(0);
 
   /* ─── filter state ──────────────────────────────────────────── */
+  const queryParams = new URLSearchParams(window.location.search);
+  const initialGroup = queryParams.get('group_id') || '';
+
   const [search,         setSearch]         = useState('');
   const [appliedSearch,  setAppliedSearch]  = useState('');
   const [category,       setCategory]       = useState('');
+  const [groupIdFilter,  setGroupIdFilter]  = useState(initialGroup);
   const [paymentMethod,  setPaymentMethod]  = useState('');
   const [startDate,      setStartDate]      = useState('');
   const [endDate,        setEndDate]        = useState('');
@@ -100,12 +107,15 @@ export default function Expenses() {
   const [editingExpense, setEditingExpense] = useState(null);
   const [viewingExpense, setViewingExpense] = useState(null);
   const [submitting,     setSubmitting]     = useState(false);
+  const [isImportOpen,   setIsImportOpen]   = useState(false);
+  const [scanning,       setScanning]       = useState(false);
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm();
+  const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm();
 
-  /* ─── fetch categories ──────────────────────────────────────── */
+  /* ─── fetch categories and groups ───────────────────────────── */
   useEffect(() => {
     api.get('/api/categories/').then(r => setCategories(r.data.results || r.data)).catch(() => {});
+    api.get('/api/groups/').then(r => setGroups(r.data.results || r.data)).catch(() => {});
   }, []);
 
   /* ─── fetch expenses ────────────────────────────────────────── */
@@ -117,6 +127,7 @@ export default function Expenses() {
         ordering,
         search:          appliedSearch || undefined,
         category:        category      || undefined,
+        group:           groupIdFilter || undefined,
         payment_method:  paymentMethod || undefined,
         start_date:      startDate     || undefined,
         end_date:        endDate       || undefined,
@@ -131,7 +142,7 @@ export default function Expenses() {
     } finally {
       setLoading(false);
     }
-  }, [page, ordering, appliedSearch, category, paymentMethod, startDate, endDate, minAmount, maxAmount]);
+  }, [page, ordering, appliedSearch, category, groupIdFilter, paymentMethod, startDate, endDate, minAmount, maxAmount]);
 
   useEffect(() => { fetchExpenses(); }, [fetchExpenses]);
 
@@ -144,7 +155,7 @@ export default function Expenses() {
 
   const resetFilters = () => {
     setSearch(''); setAppliedSearch('');
-    setCategory(''); setPaymentMethod('');
+    setCategory(''); setGroupIdFilter(''); setPaymentMethod('');
     setStartDate(''); setEndDate('');
     setMinAmount(''); setMaxAmount('');
     setOrdering('-date'); setPage(1);
@@ -160,6 +171,7 @@ export default function Expenses() {
   const activeChips = [
     appliedSearch  && { key: 'search',  label: `"${appliedSearch}"`,          color: '#6366f1', clear: () => { setSearch(''); setAppliedSearch(''); setPage(1); } },
     category       && { key: 'cat',     label: categories.find(c=>c.id==category)?.name || `Cat #${category}`, color: '#10b981', clear: () => { setCategory(''); setPage(1); } },
+    groupIdFilter  && { key: 'grp',     label: groups.find(g=>g.id==groupIdFilter)?.name || `Group #${groupIdFilter}`, color: '#8b5cf6', clear: () => { setGroupIdFilter(''); setPage(1); } },
     paymentMethod  && { key: 'pm',      label: PAYMENT_METHODS.find(p=>p.value===paymentMethod)?.label, color: '#f59e0b', clear: () => { setPaymentMethod(''); setPage(1); } },
     startDate      && { key: 'from',    label: `From ${startDate}`,           color: '#06b6d4', clear: () => { setStartDate(''); setPage(1); } },
     endDate        && { key: 'to',      label: `To ${endDate}`,               color: '#06b6d4', clear: () => { setEndDate(''); setPage(1); } },
@@ -170,20 +182,59 @@ export default function Expenses() {
   /* ─── modal helpers ─────────────────────────────────────────── */
   const openAddModal = () => {
     setEditingExpense(null);
-    reset({ title: '', category: '', payment_method: 'cash', amount: '', date: new Date().toISOString().slice(0,10), description: '', notes: '' });
+    reset({ title: '', category: '', group: '', payment_method: 'cash', amount: '', date: new Date().toISOString().slice(0,10), description: '', notes: '' });
     setIsModalOpen(true);
+  };
+
+  const handleReceiptUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setScanning(true);
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const res = await api.post('/api/expenses/scan-receipt/', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
+      const ext = res.data.extracted;
+      if (ext.title) setValue('title', ext.title);
+      if (ext.amount) setValue('amount', ext.amount);
+      if (ext.date) setValue('date', ext.date);
+      if (ext.category_id) setValue('category', ext.category_id);
+      if (ext.payment_method) setValue('payment_method', ext.payment_method);
+      if (ext.description) {
+        const currentDesc = (document.querySelector('textarea[name="description"]')?.value || '');
+        setValue('description', currentDesc ? currentDesc + '\n' + ext.description : ext.description);
+      }
+      
+      toast.success(`OCR Scan complete! Confidence: ${res.data.confidence}%`);
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.detail || 'OCR failed');
+    } finally {
+      setScanning(false);
+    }
   };
 
   const openEditModal = (exp) => {
     setEditingExpense(exp);
-    reset({ title: exp.title, category: exp.category, payment_method: exp.payment_method, amount: exp.amount, date: exp.date, description: exp.description || '', notes: exp.notes || '' });
+    reset({ title: exp.title, category: exp.category, group: exp.group || '', payment_method: exp.payment_method, amount: exp.amount, date: exp.date, description: exp.description || '', notes: exp.notes || '' });
     setIsModalOpen(true);
   };
 
   const onSubmit = async (data) => {
     setSubmitting(true);
     const fd = new FormData();
-    Object.entries(data).forEach(([k, v]) => { if (k !== 'receipt_image') fd.append(k, v || ''); });
+    Object.entries(data).forEach(([k, v]) => {
+      if (k !== 'receipt_image') {
+        if (v !== '' && v !== null && v !== undefined) {
+          fd.append(k, v);
+        }
+      }
+    });
     if (data.receipt_image?.[0]) fd.append('receipt_image', data.receipt_image[0]);
     try {
       if (editingExpense) {
@@ -211,10 +262,16 @@ export default function Expenses() {
     } catch { toast.error('Delete failed'); }
   };
 
-  const handleExport = (fmt) => {
-    const base = fmt === 'pdf' ? '/api/expenses/export-pdf/' : '/api/expenses/export-excel/';
-    const q = new URLSearchParams({ category, payment_method: paymentMethod, search: appliedSearch, start_date: startDate, end_date: endDate, min_amount: minAmount, max_amount: maxAmount, ordering });
-    window.open(`${base}?${q}`, '_blank');
+  const exportFilters = {
+    category:       category      || undefined,
+    group:          groupIdFilter || undefined,
+    payment_method: paymentMethod || undefined,
+    search:         appliedSearch || undefined,
+    start_date:     startDate     || undefined,
+    end_date:       endDate       || undefined,
+    min_amount:     minAmount     || undefined,
+    max_amount:     maxAmount     || undefined,
+    ordering,
   };
 
   const totalPages = Math.ceil(count / PAGE_SIZE);
@@ -229,9 +286,21 @@ export default function Expenses() {
           <p style={{ color: 'var(--text-secondary)' }}>Log and organise your outbound transactions with advanced filters.</p>
         </div>
         <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
-          <button className="btn btn-secondary btn-sm" onClick={() => handleExport('excel')}>📥 Excel</button>
-          <button className="btn btn-secondary btn-sm" onClick={() => handleExport('pdf')}>📄 PDF</button>
-          <button className="btn btn-primary"          onClick={openAddModal}>➕ Add Expense</button>
+          <ExportDropdown resource="expenses" filters={exportFilters} disabled={loading} />
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => setIsImportOpen(true)}
+            title="Import expenses from a CSV file"
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Import CSV
+          </button>
+          <button className="btn btn-primary" onClick={openAddModal}>➕ Add Expense</button>
         </div>
       </div>
 
@@ -442,10 +511,19 @@ export default function Expenses() {
               {editingExpense ? '✏️ Edit Expense' : '➕ Log New Outflow'}
             </h2>
             <form onSubmit={handleSubmit(onSubmit)}>
-              <div className="form-group">
-                <label className="form-label">Title</label>
-                <input type="text" className="form-control" placeholder="e.g. Monthly rent" {...register('title', { required: 'Title is required' })} />
-                {errors.title && <p className="form-error">{errors.title.message}</p>}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="form-group">
+                  <label className="form-label">Title</label>
+                  <input type="text" className="form-control" placeholder="e.g. Monthly rent" {...register('title', { required: 'Title is required' })} />
+                  {errors.title && <p className="form-error">{errors.title.message}</p>}
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Group (Optional)</label>
+                  <select className="form-control" {...register('group')}>
+                    <option value="">Personal (No Group)</option>
+                    {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                  </select>
+                </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -489,8 +567,17 @@ export default function Expenses() {
 
               <div className="form-group">
                 <label className="form-label">Receipt (OCR scan)</label>
-                <input type="file" className="form-control" accept="image/*" {...register('receipt_image')} />
-                <small style={{ color: 'var(--text-muted)' }}>Tesseract will extract text in the background.</small>
+                <input 
+                  type="file" 
+                  className="form-control" 
+                  accept="image/*" 
+                  {...register('receipt_image', {
+                    onChange: handleReceiptUpload
+                  })} 
+                />
+                <small style={{ color: scanning ? 'var(--color-primary)' : 'var(--text-muted)', fontWeight: scanning ? 600 : 400 }}>
+                  {scanning ? '🔄 Scanning receipt...' : 'Upload a receipt to auto-fill fields via OCR.'}
+                </small>
               </div>
 
               {editingExpense?.receipt_image && (
@@ -523,6 +610,9 @@ export default function Expenses() {
               <div>
                 <span className="form-label">Title</span>
                 <p style={{ fontWeight: 700, fontSize: '1.05rem' }}>{viewingExpense.title}</p>
+                {viewingExpense.group_name && (
+                  <span className="badge badge-warning" style={{ marginTop: '0.25rem' }}>Group: {viewingExpense.group_name}</span>
+                )}
               </div>
               <div style={{ textAlign: 'right' }}>
                 <span className="form-label">Amount</span>
@@ -583,6 +673,13 @@ export default function Expenses() {
             </div>
           </div>
         </div>
+      )}
+      {/* ═══ CSV IMPORT MODAL ════════════════════════════════════════ */}
+      {isImportOpen && (
+        <CsvImportModal
+          onClose={() => setIsImportOpen(false)}
+          onImported={() => { fetchExpenses(); toast.success('CSV imported — list refreshed.'); }}
+        />
       )}
     </div>
   );

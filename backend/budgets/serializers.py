@@ -10,11 +10,12 @@ class BudgetSerializer(serializers.ModelSerializer):
     progress = serializers.SerializerMethodField()
     remaining = serializers.SerializerMethodField()
     status = serializers.SerializerMethodField()
+    group_name = serializers.CharField(source='group.name', read_only=True)
 
     class Meta:
         model = Budget
         fields = (
-            'id', 'user', 'category', 'category_name', 'category_color', 
+            'id', 'user', 'group', 'group_name', 'category', 'category_name', 'category_color', 
             'category_icon', 'limit', 'start_date', 'end_date', 
             'total_spent', 'progress', 'remaining', 'status',
             'created_at', 'updated_at'
@@ -64,8 +65,10 @@ class BudgetSerializer(serializers.ModelSerializer):
 
         # Check overlapping budgets (only if we have enough info)
         if start_date and end_date:
+            group = attrs.get('group', getattr(self.instance, 'group', None))
             queryset = Budget.objects.filter(
                 user=user,
+                group=group,
                 category=category,
                 start_date__lte=end_date,
                 end_date__gte=start_date

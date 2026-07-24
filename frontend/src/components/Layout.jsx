@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import api from '../services/api';
 import { toast } from 'react-toastify';
 
 export const Layout = ({ children }) => {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -76,6 +78,11 @@ export const Layout = ({ children }) => {
             </NavLink>
           </li>
           <li>
+            <NavLink to="/groups" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`} onClick={() => setMobileOpen(false)}>
+              <span>👥</span> Shared Groups
+            </NavLink>
+          </li>
+          <li>
             <NavLink to="/profile" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`} onClick={() => setMobileOpen(false)}>
               <span>👤</span> Settings & Profile
             </NavLink>
@@ -110,6 +117,15 @@ export const Layout = ({ children }) => {
           </div>
 
           <div className="header-right">
+            <button 
+              onClick={toggleTheme} 
+              className="btn btn-secondary btn-sm"
+              style={{ padding: '0.5rem', borderRadius: '50%', width: '40px', height: '40px' }}
+              title="Toggle Theme"
+            >
+              {theme === 'dark' ? '☀️' : '🌙'}
+            </button>
+
             {/* Notification Bell with Custom Dropdown */}
             <div style={{ position: 'relative' }} ref={dropdownRef}>
               <div className="notification-bell" onClick={() => setNotifDropdownOpen(!notifDropdownOpen)}>
